@@ -25,17 +25,17 @@ def test_gui_and_overlay_can_render(tmp_path):
         assert slot['enabled'] is True
         assert win.overlay.buttons[2].text().startswith('AUTO: ON')
         store.settings['overlay_hotbar_visible'] = False
-        win.overlay.render()
+        win._render_overlays()
         assert not win.overlay.button_area.isVisible()
         alarm = make_alarm('Glitter', 30)
         store.profile['alarms'].append(alarm)
         win.clock.configure(store.profile['alarms'])
         win.clock.start(alarm, 100)
-        win.overlay.render()
+        win._render_overlays()
         assert len(win.alarm_overlay._alarm_widgets) == 1
         assert win.alarm_overlay.isVisible()
         store.settings['overlay_alarms_visible'] = False
-        win.overlay.render()
+        win._render_overlays()
         assert not win.alarm_overlay.isVisible()
         assert win.clock.time_left(alarm['id'], 115) == 15
         # Hiding a slot is purely visual; its column stays in place.
