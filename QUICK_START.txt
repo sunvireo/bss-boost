@@ -1,0 +1,41 @@
+BSS BOOSTER — EASY START
+
+1. Launch Bss Booster.
+2. Click HOTBAR. Under Item usage, choose Gumdrops or another item for
+   the same slot number you have assigned in Roblox.
+3. Set Every = how often to press that number key (e.g. 2 sec).
+4. Tick Use OR click the red AUTO: OFF button on the game overlay.
+5. Right-drag a red button to line up all 7 buttons under Roblox's bar.
+6. Press F1, then click back into Roblox. F2 = pause; F3 = stop.
+
+Want an alarm?
+1. Click ALARMS and + New alarm.
+2. Enter its name, time, reset shortcut, and Sound or Voice.
+3. Click Start for that alarm. Reset silences the noise and restarts it.
+
+Show only hotbar, only alarms, both or neither?
+In HOTBAR or SETTINGS, toggle the Show hotbar / Show alarms checkboxes.
+All timers continue when hidden; alarm sounds and voice continue too.
+
+Your items, settings and alarms save automatically when you close the app.
+A new install starts completely blank.
+
+Want a Windows EXE without installing Python? See BUILD_WITHOUT_PYTHON.md.
+
+OVERLAY BOTTOM-EDGE FIX (v1.3.1)
+Right-drag a red AUTO button down to the very bottom edge of your screen.
+In Hotbar or Settings, you can also click "Move to screen bottom".
+The button position will save when you close Bss Booster.
+The Windows taskbar may overlap the buttons if it is visible.
+
+V1.4.0: CHOOSE VISIBLE RED BUTTONS AND MOVE ALARMS SEPARATELY
+HOTBAR > "Choose which AUTO buttons appear on-screen": tick Slot 1-7
+for only the pills you want to SEE. Hiding a red pill does NOT stop its
+macro, and hidden slot positions stay empty so the others remain aligned.
+Click Show all 7 or Hide all 7 for convenience.
+
+To move red buttons, right-drag one red AUTO pill.
+To move alarm timers separately, right-drag an alarm countdown chip.
+To center alarm timers again, click "Reset alarm overlay position" in ALARMS.
+Both overlay locations and visibility choices save when you close the app.
+If Click-through mode is enabled, disable it before dragging.

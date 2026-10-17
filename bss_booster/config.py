@@ -18,7 +18,7 @@ ITEMS = [
 def make_slot(key: int) -> dict:
     # First launch is genuinely blank: no example items or activated schedules.
     # Intervals are stored only as an editor fallback until a user assigns an item.
-    return {"key": key, "item": "Empty", "enabled": False, "interval": 10.0, "delay": 0.0}
+    return {"key": key, "item": "Empty", "enabled": False, "overlay_visible": True, "interval": 10.0, "delay": 0.0}
 
 
 def make_alarm(name: str, duration: int, repeat: bool = False) -> dict:
@@ -36,7 +36,12 @@ def default_data() -> dict:
             "settings": {"target_title": "Roblox", "focus_only": True,
                          "overlay_visible": True, "overlay_corner": "Bottom center",
                          "overlay_opacity": 93, "hotkeys": True, "animations": True,
-                         "theme": "Light", "start_alarms_with_macro": False}}
+                         "theme": "Light", "start_alarms_with_macro": False,
+                         "overlay_hotbar_visible": True, "overlay_alarms_visible": True,
+                         "overlay_countdowns": False, "overlay_spacing": 22,
+                         "overlay_scale": 100, "overlay_x": -1, "overlay_y": -1,
+                         "alarm_overlay_x": -1, "alarm_overlay_y": -1,
+                         "overlay_clickthrough": False}}
 
 
 def clamp_number(value, default, low, high):
@@ -56,6 +61,7 @@ def validated_slot(raw: dict, key: int) -> dict:
     item = str(raw.get("item", base["item"]))[:65].strip()
     base.update(item=item or "Empty",
                 enabled=raw.get("enabled") is True,
+                overlay_visible=raw.get("overlay_visible", True) is True,
                 interval=round(clamp_number(raw.get("interval"), base["interval"], .1, 86400), 2),
                 delay=round(clamp_number(raw.get("delay"), 0, 0, 86400), 2))
     return base
@@ -126,7 +132,9 @@ def validated_data(raw) -> dict:
         base["active_profile"] = next(iter(base["profiles"]))
     settings = raw.get("settings", {})
     if isinstance(settings, dict):
-        for key in ("focus_only", "overlay_visible", "hotkeys", "animations", "start_alarms_with_macro"):
+        for key in ("focus_only", "overlay_visible", "hotkeys", "animations", "start_alarms_with_macro",
+                    "overlay_hotbar_visible", "overlay_alarms_visible", "overlay_countdowns",
+                    "overlay_clickthrough"):
             if isinstance(settings.get(key), bool):
                 base["settings"][key] = settings[key]
         for key, choices in (("overlay_corner", ["Top left", "Top center", "Top right", "Bottom left", "Bottom center", "Bottom right"]),
@@ -137,6 +145,18 @@ def validated_data(raw) -> dict:
             base["settings"]["target_title"] = settings["target_title"][:90]
         base["settings"]["overlay_opacity"] = int(clamp_number(
             settings.get("overlay_opacity"), 93, 40, 100))
+        # Migration: previously the overlay had only one visibility toggle.
+        if "overlay_hotbar_visible" not in settings:
+            base["settings"]["overlay_hotbar_visible"] = base["settings"]["overlay_visible"]
+        if "overlay_alarms_visible" not in settings:
+            base["settings"]["overlay_alarms_visible"] = base["settings"]["overlay_visible"]
+        base["settings"]["overlay_scale"] = int(clamp_number(settings.get("overlay_scale"), 100, 60, 150))
+        raw_spacing = settings.get("overlay_spacing", 22)
+        if raw_spacing == 39:
+            raw_spacing = 22
+        base["settings"]["overlay_spacing"] = int(clamp_number(raw_spacing, 22, 0, 80))
+        for axis in ("overlay_x", "overlay_y", "alarm_overlay_x", "alarm_overlay_y"):
+            base["settings"][axis] = int(clamp_number(settings.get(axis), -1, -1, 20000))
     return base
 
 

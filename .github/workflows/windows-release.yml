@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "bss_booster/**"
+      - "tests/**"
       - "assets/**"
       - "main.py"
       - "requirements.txt"

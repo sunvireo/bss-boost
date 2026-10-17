@@ -1,132 +1,65 @@
-# Bss Booster — Windows desktop macro + overlay (v1.2)
+# Bss Booster v1.4.0 — Windows boosting macro
 
-Bss Booster is a locally running PySide6 Windows 11 application with a clean, pale layout inspired by the reference app. **It is not affiliated with Roblox or Bee Swarm Simulator.**
+A customizable Bee Swarm Simulator boosting helper with a **light, Revolution-Macro-inspired desktop UI** and **transparent red AUTO buttons**, designed to sit beneath the real Roblox hotbar. Built with Python and PySide6; no network access is needed to run the finished app. Unaffiliated with Roblox or Bee Swarm Simulator.
 
-## Features
+## First-time setup (4 steps)
 
-- **Hotbar:** 7 visual slots matching keys **1–7**. Select a supplied item (or type a custom name), enable/disable each slot, and set an independent **repeat interval (0.1–86,400 seconds)** and **first-use delay (0–86,400 seconds)**.
-- **Boosting macro:** Start (F1), pause (F2), stop (F3). Every enabled key runs on its own timer. Windows `SendInput` generates actual key down/up events. **All slots start empty and OFF**; nothing is pressed until you enable one and select Start.
-- **Foreground safety:** Keys are sent **only if the active window title contains `Roblox`**, by default. Switch from Bss Booster into your Roblox window after pressing Start. Customize the title filter or turn the protection off in Settings (not recommended).
-- **Timers:** On the first launch this page is empty; assign an item in Hotbar to create its editable schedule. Review intervals, delays and use counts here.
-- **Alarms:** Create, rename, enable, pause, reset or delete countdown alarms with durations in hours/minutes/seconds. Optional repeat, per-alarm global reset keybind, selectable looping **Sound / Voice / Off** alert, and floating overlay for each alarm. Sound and offline Windows TTS repeat until you use that alarm’s reset keybind or click Silence / Reset.
-- **Always-on-top overlay:** Title-free black bar shows each of the seven hotbar slots with live next-use countdowns (READY / PAUSED / OFF when appropriate), plus alarm names and countdowns underneath. Overlay hides itself when nothing has been configured. Position and opacity are adjustable. Overlay does not intentionally capture mouse input. **For games use borderless/windowed mode:** exclusive fullscreen may cover the overlay.
-- **Profiles:** Duplicate, switch, import and export separate sets of hotbar rules + alarm definitions. Switching profiles stops any running macro.
-- **Status:** Live key counts and session activity log.
-- **Settings:** Windows global function-key shortcuts and per-alarm reset shortcuts, focus safety, overlay behaviour, light/dark theme, animations, and whether alarms start with the macro.
-- **Local configuration:** Auto-saved during editing and on close, then reloaded next launch. Stored as JSON at `%LOCALAPPDATA%\BssBooster\booster_settings.json`. Profiles and alarm definitions persist. **Active countdown progress and the running macro are intentionally not resumed after restart.** The app does not need internet once dependencies are installed.
+1. Open **Hotbar** and select the item you have in each numbered Roblox slot (1–7). Every slot starts Empty and OFF on a fresh install.
+2. For each item, set **Every** to the repeat interval in seconds, and **Delay** to the delay before the first use (zero is immediate). Tick **Use** to arm it. Each timer is independent.
+3. Set Roblox to **windowed or borderless**. Enable **Show red AUTO buttons** and **right-drag any red button** to position the row beneath the real hotbar. Use **Settings → Button size / Distance between buttons** to align the row. The overlay does not read or redraw Roblox's inventory icons; it only shows the red AUTO buttons.
+4. Click a red **AUTO: OFF** button to change it to **AUTO: ON**, or turn a slot on from the Hotbar page. Press **F1** to actually start boosting, **F2** to pause, **F3** to stop. By default keys are only sent when a window containing `Roblox` is focused.
 
-## Get the EXE without installing Python (recommended)
+### Overlay design
 
-The installer and portable EXE **do not need Python installed to run**. To *build* them without installing Python yourself, follow **`BUILD_WITHOUT_PYTHON.md`**. A preconfigured GitHub Actions workflow builds `BssBooster.exe` and `BssBoosterSetup.exe` on a Windows cloud build machine and lets you download both. No local Python installation is required. A GitHub account and internet connection are required for this build.
+- Seven individually clickable red pill buttons, with separate **Show Slot 1–7** checkboxes in **Hotbar → Choose which AUTO buttons appear on-screen**. Hide an individual pill without disabling that item's actual macro. Invisible pills leave their original column empty: the other buttons never slide sideways. Background **#FF0000 at 20% opacity**; button text **35% opacity**, set in **Gotham Regular** when installed on your system, otherwise Segoe UI. No black panel, background bar or title strip.
+- Optional countdown on each red AUTO button. Disabled/unconfigured slots display `AUTO: OFF`.
+- **Right-drag any red button** to reposition the whole overlay, including to the *actual bottom of your screen*. Unlike previous versions, the position is not clamped above the Windows taskbar. New position saves immediately and loads next time. You can also use **Move to screen bottom** on the Hotbar or Settings page; size (60–150%) and spacing (0–80 px) remain configurable.
+- **Show red AUTO buttons** and **Show alarm timers** have separate switches. Show both, either one, or neither. The Hotbar page also has **Show all 7 / Hide all 7** quick buttons and per-slot visibility checkboxes. These visibility options are saved with each profile; macro 'Use' and 'Show' are independent. Hiding a display NEVER stops the associated macro or running alarms.
+- Optional **click-through mode** in Settings lets game clicks pass through the buttons, but disables mouse toggling until you switch it off.
+- **Alarms are in their own transparent always-on-top window**, independent of the hotbar window. **Right-drag an alarm chip to move all alarm timers** without moving the red pills. **Right-drag a red pill** to move only the hotbar overlay. Each window remembers its own position on restart; use **Reset alarm overlay position** in Alarms or Settings to re-center alarms. Each alarm also has its own individual Overlay checkbox.
+- The overlay is an independent always-on-top utility window. Some exclusive-fullscreen games cover it; use borderless/windowed Roblox. The Windows taskbar itself may cover a button dragged behind the taskbar when the taskbar is visible.
 
-**This source ZIP does not already contain a precompiled Windows EXE**. GitHub Actions compiles the EXEs for you. You can also build them locally if you already have Python.
+### Alarms
 
-## Windows 11 quick start (source mode: Python required)
+- Add alarms with your own name, hours/minutes/seconds, Repeat, On/Off, and individual **Overlay** display switch.
+- Set an individual **single-key reset shortcut**, e.g. `G`, `8`, `Space`, `F4` or combinations like `Ctrl+Alt+1`. `F1–F3` are reserved for the macro. A global single-key shortcut can intercept a game control; don't use a hotbar number you need in Roblox.
+- Choose **Sound**, **Voice** or **Off**. Sound loops the bundled WAV; Voice repeats the alarm name using **Windows offline text-to-speech** (not cloud AI). Alarms keep their sound/voice and time progression even when hidden. Reset or its keybind silences and restarts that alarm; Silence stops only the sound.
+- Individual alarms can run independently of the boosting macro; an optional Setting lets you start enabled alarms with the macro.
 
-1. Install [Python 3.11 or newer](https://www.python.org/downloads/windows/). Check **Add python.exe to PATH** during setup.
-2. Extract this ZIP **first** (do not run BAT files from inside a zipped folder).
-3. Double-click `run_windows.bat`. The first run creates a `.venv` folder and downloads PySide6, so an internet connection is required **once**.
-4. In Bss Booster, open **Hotbar**, select items for your in-game slots 1–7, enable the desired slots, and set intervals. Everything starts blank on first launch.
-5. Press **Start (F1)** and switch focus to Roblox. F2 pauses; F3 stops. If your game isn't responding, read the notes below.
+### Other features
 
-## Make a standalone Windows EXE
+- One-click **Enable all assigned** / **Disable all** slots; clear instructions and tooltips for beginners.
+- Multiple saved presets; profile cloning, import, export. Switching profiles stops the macro.
+- Live Status log and sent-key counts; configurable Roblox window title, animations, light/dark theme.
+- Local settings and profiles save automatically and on exit in `%LOCALAPPDATA%\BssBooster\booster_settings.json`; an update preserves existing settings. First-time installs have empty hotbar and no alarms.
+- The macro **never starts by itself** when you launch the app. Saved alarm durations are retained but actively ticking alarms are not resumed across restart.
 
-Double-click `build_windows.bat` **on a Windows PC**. This installs PyInstaller into the project's `.venv` and produces:
+## Windows executable without Python on your PC
 
-`dist\BssBooster.exe`
+**Easiest:** Follow [`BUILD_WITHOUT_PYTHON.md`](BUILD_WITHOUT_PYTHON.md). Upload the project contents to a new GitHub repository and open **Actions → Build Bss Booster Windows EXE and Installer → Run workflow**. The GitHub Windows runner compiles the standalone portable **`BssBooster.exe`** and installer **`BssBoosterSetup.exe`** under the completed build's **Artifacts**. The finished EXEs run without Python or a GitHub login.
 
-This is the full packaged app; it should not require Python on the computer where it runs. The build needs Windows because Windows EXEs cannot be built directly on Linux using standard PyInstaller. You can rename the file or pin it to the taskbar. Windows SmartScreen may show a warning for an unsigned app you build yourself; only run software you trust.
+**If Python is already installed:** run `run_windows.bat` to launch the source app, `build_windows.bat` to produce the portable EXE, or `build_installer_windows.bat` to produce the complete installer (uses Inno Setup 6).
 
-## Create a proper Windows setup installer (recommended)
+**This ZIP contains source and the EXE builder, not a precompiled EXE.** Windows builds must be completed and tested on Windows. Cloud builds also run a PySide6 GUI smoke test as well as the settings/scheduler tests before compiling the EXEs.
 
-To make **`BssBoosterSetup.exe`**, which installs Bss Booster like a normal Windows program:
+## What to expect and limitations
 
-1. On your **Windows 11 PC**, install [Python 3.11 or newer](https://www.python.org/downloads/windows/) and check **Add Python to PATH**. If Python is already installed, skip this step.
-2. Extract this ZIP, then double-click **`build_installer_windows.bat`**. Do not launch it from inside the ZIP.
-3. The builder downloads Python dependencies and first creates `dist\BssBooster.exe`. An internet connection is required for this build step.
-4. If [Inno Setup 6](https://jrsoftware.org/isdl.php) isn't installed, the builder offers to install it using Windows Package Manager (`winget`), when available. Otherwise, install Inno Setup 6 manually and run the builder again.
-5. Find your **real installer** here: **`dist\installer\BssBoosterSetup.exe`**.
+- This does not copy in-game icons or inspect the Roblox inventory. The red buttons are aligned visually beneath it using position and spacing controls.
+- Simulated keypresses use the Windows `SendInput` API. Some games may ignore synthetic input; Roblox behaviour isn't guaranteed. Bss Booster has no memory-reading, anti-cheat bypass or game injection features.
+- Macro triggers at independent user-defined intervals. If Roblox loses focus, input stops when foreground protection is on; missed presses don't burst on refocus.
+- If you can't click overlay AUTO buttons, disable **Click-through mode** in Settings. If they aren't visible, configure at least one item, then enable the overlay. Moving them is done by **right-dragging** a red button.
+- Gotham Regular is commercial typography: Bss Booster uses it when it is already installed, but the font is **not redistributed** with the project.
+- Windows TTS is a system speech synthesizer, not a remote AI service. Voice playback requires Windows speech support; if it fails, Bss Booster falls back to the alarm sound.
+- Windows SmartScreen may warn about unsigned EXEs built through your own GitHub repository. Only run files you trust.
 
-Double-click `BssBoosterSetup.exe` to open the installation wizard. The installer:
+## Project structure
 
-- installs to your Windows user account (no administrator rights normally needed);
-- adds **Bss Booster** to the **Start menu**;
-- offers a **desktop shortcut** (optional checkbox during installation);
-- registers an **uninstaller** in Windows Settings > Apps > Installed apps;
-- offers to launch Bss Booster when installation finishes.
-
-You can send just **`BssBoosterSetup.exe`** to another Windows user; they do **not** need Python, PyInstaller or Inno Setup to install or run it. User settings are stored at `%LOCALAPPDATA%\BssBooster\booster_settings.json`; uninstalling the program does not intentionally delete your personal saved profiles/settings. If upgrading, keep the same installer `AppId` in `BssBooster.iss` to let the installer update the previous install.
-
-**Important:** This ZIP contains a *builder for an installer*, not a precompiled setup EXE. Standard PyInstaller and Inno Setup create Windows executables on **Windows**. A local Windows build and install test is still required. An unsigned homemade installer may trigger Windows SmartScreen warnings.
-
-## What happens when you upgrade from an older Bss Booster?
-
-**Existing user setups are kept.** The blank-start defaults only apply when no saved configuration exists. If you previously used Bss Booster v1.1, its current hotbar and alarm presets stay as they were when the new app is installed. To start from scratch, clear the items/alarms manually in the app or (with the app closed) back up and remove `%LOCALAPPDATA%\BssBooster\booster_settings.json`.
-
-## Single-key alarm shortcuts
-
-On the Alarms page, click **Reset shortcut** and press just one key (such as `G`, `8`, `Space` or `F4`). Modifier combinations are still supported. `F1`, `F2` and `F3` are always reserved for Start/Pause/Stop. Windows may refuse reserved keys. **Important: using a plain letter or number as a global shortcut can swallow that key from Roblox and other programs.** Choose a key you do not use for gameplay, or use a modified combination if that happens. The shortcut only runs while Bss Booster is open and global shortcuts are enabled.
-
-## Controls and behavior
-
-| Action | Shortcut (Windows) | Behavior |
-|---|---|---|
-| Start / Resume | F1 | Begins per-slot schedules; uses configured first-use delays. |
-| Pause | F2 | Pauses all macro intervals and remembers how much time remains. |
-| Stop | F3 | Stops macro. Starting again resets intervals. |
-| Alarm Start/Pause/Reset | Alarm row buttons | Reset now silences and restarts the full countdown. |
-| Per-alarm reset | Configurable on Alarms page, e.g. G, 8, Space or Ctrl+Alt+1 | Works globally while the app runs; silences audio and resets & restarts the selected alarm. |
-| + in left sidebar | Click | Create an alarm. |
-
-**Example:** If your Gumdrops are on key 2 and your Stingers are on key 4, set key 2 every 2.0 seconds and key 4 every 10.0 seconds, tick both Use boxes, Start, then focus Roblox. Both intervals run independently. The first use happens immediately unless you set a first-use delay. When you switch out of Roblox with foreground safety enabled, keys stop being sent. When you switch back, each overdue slot fires at most once and re-schedules from then (no input burst).
-
-## Important limitations
-
-- **Windows-only key input:** The PySide6 interface may open on other desktop OSes, but keyboard injection and system-wide Windows hotkeys are implemented for Windows.
-- **Game compatibility:** Roblox/other games may ignore simulated `SendInput` keystrokes depending on their input pipeline or security systems; the code cannot guarantee the game will accept input. Try regular windowed or borderless mode, and ensure window title matches Settings. No anti-cheat bypass, game injection, memory reading, or exploit features are included.
-- **Overlay visibility:** Some games in exclusive fullscreen appear above always-on-top utility windows. Use borderless/windowed display mode to see the overlay.
-- **Global hotkeys:** Other applications may already own a requested key combination. If Windows registration fails, use the on-screen button or choose another shortcut. Macro F1/F2/F3 are reserved; each alarm accepts Ctrl/Alt/Shift combinations or F4–F12. Hotkeys can be disabled in Settings.
-- **Focus protection:** Turning it off makes simulated keypresses enter whatever application is focused. Keep it on for safety.
-- **App permissions:** Normal user permissions should be sufficient. Windows may restrict synthesized input into elevated applications; avoid running Roblox and this app at different integrity levels.
-- **Timers vs boost effects:** Bss Booster repeats keys on your chosen schedule; it cannot determine actual in-game cooldowns or inventories. Select reasonable timings yourself and comply with the rules of the game you use it with.
-- **Voice option:** This is Windows' built-in offline **text-to-speech (TTS)**, not a generated AI voice. It speaks the chosen alarm name repeatedly until acknowledged. If unavailable, it falls back to the repeating alarm WAV sound. The bundled WAV uses no network access.
-- **Audio acknowledgement:** The **Silence** button stops the alarm audio; **Reset**, the reset shortcut, or **Start** also silence the alarm. **Reset** restarts its countdown immediately. Alerts stay active until acknowledged, even if the associated countdown is configured to repeat.
-- **Session counts** and running alarm progress reset when reopening the application. Alarm configurations and profiles persist.
-
-## Project files
-
-```
-BssBoosterV1/
-├── main.py                     # Desktop entry point
-├── requirements.txt            # PySide6 dependency
-├── run_windows.bat             # Start app in a Python virtual environment
-├── build_windows.bat           # Create dist/BssBooster.exe with PyInstaller
-├── build_installer_windows.bat # One-click Windows installer builder
-├── BssBooster.iss              # Inno Setup installer definition
-├── assets/
-│   ├── bss_booster_icon.png    # App icon
-│   ├── bss_booster_icon.ico    # Windows executable icon
-│   └── booster_alarm.wav       # Looping alarm sound
-├── bss_booster/
-│   ├── config.py               # Safe JSON saves / profiles / validation
-│   ├── engine.py               # Scheduler, alarm clock and Windows SendInput
-│   ├── hotkeys.py              # Windows global macro & alarm shortcuts
-│   ├── hotkey_codec.py         # Shortcut parsing/validation
-│   ├── notifier.py             # Looping WAV & offline Windows TTS
-│   ├── theme.py                # Reference-like light theme and optional dark theme
-│   └── ui.py                   # Pages, widgets, floating overlay and wiring
-└── tests/
-    ├── test_config.py
-    ├── test_engine.py
-    └── test_alarms_v11.py
-```
-
-Cloud-build instructions: `BUILD_WITHOUT_PYTHON.md`; cloud pipeline: `.github/workflows/windows-release.yml`.
-
-## Editing the UI
-
-Most controls and page layouts are in `bss_booster/ui.py`. Colours and spacing are in `bss_booster/theme.py`. Run `run_windows.bat` to preview your changes. If you want the exact look of a new screenshot in a future iteration, send it and these components can be adjusted.
-
-## Tests
-
-The pure-Python scheduler and settings tests are run with `python -m pytest tests` if pytest is installed. Because GUI testing and creation of a Windows EXE require PySide6 on a Windows desktop, those steps must be tested on Windows; unit tests and Python syntax checks passed here, but the interface, voice output, installer, and actual Windows EXEs have not been built/tested in this environment.
+- `bss_booster/ui.py` — main desktop window, Hotbar/Timers/Alarms/Profiles/Status/Settings pages
+- `bss_booster/overlay.py` — independent transparent windows for seven aligned hotbar buttons and separately draggable alarms
+- `bss_booster/config.py` — preferences, profiles, settings validation and atomic saving
+- `bss_booster/engine.py` — independent macro scheduler and alarm clock
+- `bss_booster/notifier.py` — repeating sound and Windows offline spoken alarms
+- `bss_booster/hotkeys.py` / `hotkey_codec.py` — Windows macro hotkeys and one-key alarm reset
+- `bss_booster/theme.py` — main UI light/dark palettes
+- `.github/workflows/windows-release.yml` — Windows build and tests
+- `tests/` — configuration/scheduler tests and Windows GUI smoke test

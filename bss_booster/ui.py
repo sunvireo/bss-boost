@@ -21,6 +21,8 @@ from .engine import AlarmClock, Scheduler, WindowsKeyboard
 from .hotkeys import WindowsHotkeys
 from .hotkey_codec import normalize_hotkey
 from .notifier import AlarmNotifier
+from .overlay import HotbarOverlay, AlarmOverlay
+from .overlay_geometry import bottom_edge_y, clamp_overlay_position
 from .theme import stylesheet
 
 PAGES = ["Hotbar", "Timers", "Alarms", "Profiles", "Status", "Settings"]
@@ -98,146 +100,6 @@ def line() -> QFrame:
     return f
 
 
-class AlarmOverlay(QWidget):
-    """Black title-free overlay with hotbar schedules and alarm countdowns.
-
-    The tool window cannot grab focus or mouse input. It remains empty/hidden on
-    a fresh installation until the user creates an item or an alarm.
-    """
-    def __init__(self, store: Store, clock: AlarmClock, notifier: AlarmNotifier,
-                 scheduler: Scheduler):
-        flags = (Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool |
-                 Qt.WindowType.WindowStaysOnTopHint)
-        if hasattr(Qt.WindowType, "WindowTransparentForInput"):
-            flags |= Qt.WindowType.WindowTransparentForInput
-        super().__init__(None, flags)
-        self.setObjectName("Overlay")
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setStyleSheet("""
-            QWidget#Overlay {background: transparent;}
-            QFrame#OverlayPanel {background: #151619; border-radius: 6px;}
-            QFrame#OverlaySlot {background: #292b32; border-radius: 5px;}
-            QLabel {color: #f7f7f8; font-family: 'Segoe UI'; font-size: 12px;}
-            QLabel#OverlayKey {color: #b6bac4; font-size: 11px; font-weight: 700;}
-            QLabel#OverlayName {color: #f6f6f9; font-size: 10px; font-weight: 700;}
-            QLabel#OverlayAlarmName {color: #fff; font-size: 13px;}
-            QLabel#OverlayAlarmClock {color: #e2c5ff; font-size: 14px; font-weight: 700;}
-        """)
-        self.store, self.clock = store, clock
-        self.notifier, self.scheduler = notifier, scheduler
-        self.order = ()
-        self.cells = {}
-        self.rows = {}
-        self.layout_col = QVBoxLayout(self)
-        self.layout_col.setContentsMargins(0, 0, 0, 0)
-        self.layout_col.setSpacing(5)
-        self.slots_panel = QFrame()
-        self.slots_panel.setObjectName("OverlayPanel")
-        self.slots_layout = QHBoxLayout(self.slots_panel)
-        self.slots_layout.setContentsMargins(7, 7, 7, 7)
-        self.slots_layout.setSpacing(5)
-        self.layout_col.addWidget(self.slots_panel)
-        for key in range(1, 8):
-            cell = QFrame()
-            cell.setObjectName("OverlaySlot")
-            inner = QVBoxLayout(cell)
-            inner.setContentsMargins(7, 6, 7, 6)
-            inner.setSpacing(3)
-            number = label(str(key), "OverlayKey")
-            number.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            name = label("EMPTY", "OverlayName")
-            name.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            number.setFixedWidth(92)
-            name.setFixedWidth(92)
-            timer = label("OFF", "OverlayCountdown")
-            timer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            inner.addWidget(number)
-            inner.addWidget(name)
-            inner.addWidget(timer)
-            self.slots_layout.addWidget(cell)
-            self.cells[key] = (cell, name, timer)
-        self.alarms_panel = QFrame()
-        self.alarms_panel.setObjectName("OverlayPanel")
-        self.alarms_layout = QVBoxLayout(self.alarms_panel)
-        self.alarms_layout.setContentsMargins(12, 9, 12, 9)
-        self.alarms_layout.setSpacing(6)
-        self.layout_col.addWidget(self.alarms_panel)
-
-    def render(self):
-        prefs = self.store.settings
-        slots = self.store.profile["slots"]
-        alarms = [a for a in self.store.profile["alarms"] if a["enabled"] and a["overlay"]]
-        has_hotbar = any(slot["item"].strip().lower() not in ("", "empty") for slot in slots)
-        if not prefs["overlay_visible"] or (not has_hotbar and not alarms):
-            self.hide()
-            return
-        self.slots_panel.setVisible(has_hotbar)
-        self.alarms_panel.setVisible(bool(alarms))
-        now = time.monotonic()
-        for slot in slots:
-            cell, name, timer = self.cells[slot["key"]]
-            item = slot["item"].strip()
-            assigned = bool(item) and item.lower() != "empty"
-            enabled = slot["enabled"] and assigned
-            name.setText((item[:12] if assigned else "EMPTY").upper())
-            if not enabled:
-                timer.setText("OFF")
-                color = "#797d86"
-            elif not self.scheduler.running:
-                timer.setText("READY")
-                color = "#d8c0ff"
-            elif self.scheduler.paused:
-                timer.setText("PAUSED")
-                color = "#f0c979"
-            else:
-                seconds = max(0, self.scheduler.next_due.get(slot["key"], now) - now)
-                timer.setText(f"{seconds:.1f}s" if seconds < 60 else human_time(seconds))
-                color = "#eab8ff" if seconds < 1 else "#97f0bd"
-            timer.setStyleSheet(f"color: {color}; font-weight: 700; font-size: 17px;")
-        ids = tuple(a["id"] for a in alarms)
-        if ids != self.order:
-            for widget, _ in self.rows.values():
-                self.alarms_layout.removeWidget(widget)
-                widget.deleteLater()
-            self.rows.clear()
-            for alarm in alarms:
-                wrapper = QWidget()
-                lr = QHBoxLayout(wrapper)
-                lr.setContentsMargins(0, 0, 0, 0)
-                lr.setSpacing(10)
-                title = label(alarm["name"], "OverlayAlarmName")
-                clock_label = label("00:00", "OverlayAlarmClock")
-                clock_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-                lr.addWidget(title, 1)
-                lr.addWidget(clock_label)
-                self.alarms_layout.addWidget(wrapper)
-                self.rows[alarm["id"]] = (wrapper, (title, clock_label))
-            self.order = ids
-        for alarm in alarms:
-            _, (name, clock_label) = self.rows[alarm["id"]]
-            name.setText(alarm["name"][:42])
-            clock_label.setText("ALERT!" if self.notifier.is_alerting(alarm["id"])
-                                else human_time(self.clock.time_left(alarm["id"])))
-        self.setWindowOpacity(prefs["overlay_opacity"] / 100)
-        self.adjustSize()
-        screen = QApplication.primaryScreen()
-        if screen is not None:
-            r = screen.availableGeometry()
-            corner = prefs["overlay_corner"]
-            if "center" in corner.lower():
-                x = r.center().x() - self.width() // 2
-            elif "left" in corner.lower():
-                x = r.left() + 16
-            else:
-                x = r.right() - self.width() - 16
-            y = r.top() + 20 if corner.startswith("Top") else r.bottom() - self.height() - 90
-            self.move(max(r.left(), min(x, r.right() - self.width())), max(r.top(), y))
-        if not self.isVisible():
-            self.show()
-
-
 class BoosterWindow(QMainWindow):
     def __init__(self, store: Store, icon_path: Path):
         super().__init__()
@@ -246,7 +108,8 @@ class BoosterWindow(QMainWindow):
         self.clock = AlarmClock()
         self.clock.configure(self.store.profile["alarms"])
         self.notifier = AlarmNotifier(icon_path.parent / "booster_alarm.wav")
-        self.overlay = AlarmOverlay(store, self.clock, self.notifier, self.scheduler)
+        self.overlay = HotbarOverlay(store, self.clock, self.notifier, self.scheduler, self._toggle_overlay_slot)
+        self.alarm_overlay = AlarmOverlay(store, self.clock, self.notifier)
         self.current_page = ""
         self.slot_tiles = {}
         self.slot_focus = {}
@@ -262,7 +125,7 @@ class BoosterWindow(QMainWindow):
         self.resize(1150, 755)
         self.setStyleSheet(stylesheet(store.settings["theme"]))
         self._build_shell(icon_path)
-        self.overlay.render()
+        self._render_overlays()
         self._save_later = QTimer(self)
         self._save_later.setSingleShot(True)
         self._save_later.setInterval(360)
@@ -280,7 +143,7 @@ class BoosterWindow(QMainWindow):
             shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
             shortcut.activated.connect(action)
         self.show_page("Hotbar")
-        self._log("Ready. Configure slots, then press Start or F1.")
+        self._log("Ready. Set up an item, click its red AUTO button or enable it here, then press F1.")
 
     def _build_shell(self, icon_path):
         root = QWidget()
@@ -456,16 +319,65 @@ class BoosterWindow(QMainWindow):
         widget.style().polish(widget)
         widget.update()
 
+    def _render_overlays(self):
+        """Update both independent always-on-top windows."""
+        self.overlay.render()
+        self.alarm_overlay.render()
+
     def _changed(self):
         self._save_later.start()
         self._refresh_tiles()
         if self.scheduler.running:
             self.scheduler.configure(self.store.profile["slots"])
         self.notifier.sync(self.store.profile["alarms"])
-        self.overlay.render()
+        self._render_overlays()
 
     def _page_hotbar(self):
         scroll, v = self._page("Boosting hotbar", "First launch starts empty. Pick the item for each Roblox number key, choose a repeat interval, then tick Use.")
+        steps, help_layout = panel()
+        help_layout.addWidget(label("QUICK START  ·  3 SIMPLE STEPS", "Eyebrow"))
+        instructions = label("1. Choose an item for a slot below.   2. Set 'Every' to how often it should be used.   3. Enable AUTO, then press Start (F1).", "Muted")
+        instructions.setWordWrap(True)
+        help_layout.addWidget(instructions)
+        game_note = label("The floating red buttons are placed UNDER your actual Roblox hotbar. They do not copy or detect game items — assign the same items and keys here.", "Muted")
+        game_note.setWordWrap(True)
+        help_layout.addWidget(game_note)
+        v.addWidget(steps)
+        actions, actions_body = panel()
+        tools = row(label("Overlay quick controls", "SectionTitle"))
+        tools.addStretch(1)
+        tools.addWidget(btn("Move overlay to default", self._reset_overlay_position, "SoftPurple", "Re-centre red buttons at the bottom of your screen"))
+        tools.addWidget(btn("Move to screen bottom", self._move_overlay_to_screen_bottom, "SoftPurple", "Place the red buttons at the true bottom edge, including the taskbar area"))
+        actions_body.addLayout(tools)
+        actions_body.addWidget(checkbox("Show red AUTO buttons over Roblox", self.store.settings["overlay_hotbar_visible"],
+                                        lambda on: self._set_setting("overlay_hotbar_visible", on)))
+        actions_body.addWidget(checkbox("Show separate alarm timer overlay", self.store.settings["overlay_alarms_visible"],
+                                        lambda on: self._set_setting("overlay_alarms_visible", on)))
+        actions_body.addWidget(checkbox("Show next-use countdowns inside the AUTO buttons", self.store.settings["overlay_countdowns"],
+                                        lambda on: self._set_setting("overlay_countdowns", on)))
+        tip = label("Right-drag red buttons to move the hotbar. Right-drag an alarm timer to move alarms independently. Hidden buttons and alarms KEEP running.", "Muted")
+        tip.setWordWrap(True)
+        actions_body.addWidget(tip)
+        v.addWidget(actions)
+        visibility, visibility_body = panel()
+        visibility_body.addWidget(label("Choose which AUTO buttons appear on-screen", "SectionTitle"))
+        visibility_hint = label("Tick the slots you want to see. Hidden slots keep their Roblox positions and can still run normally. Use the 'Use' checkbox below to turn the actual macro on or off.", "Muted")
+        visibility_hint.setWordWrap(True)
+        visibility_body.addWidget(visibility_hint)
+        visibility_row = QHBoxLayout()
+        visibility_row.setSpacing(16)
+        for slot in self.store.profile["slots"]:
+            slot_key = slot["key"]
+            visibility_row.addWidget(checkbox(f"Slot {slot_key}", slot.get("overlay_visible", True),
+                                  lambda shown, target=slot: self._edit_slot(target, "overlay_visible", shown)))
+        visibility_row.addStretch(1)
+        visibility_body.addLayout(visibility_row)
+        visibility_actions = row(
+            btn("Show all 7", lambda: self._set_all_overlay_slots(True), "SoftPurple"),
+            btn("Hide all 7", lambda: self._set_all_overlay_slots(False)))
+        visibility_actions.addStretch(1)
+        visibility_body.addLayout(visibility_actions)
+        v.addWidget(visibility)
         p, body = panel()
         head = row(label("Your hotbar", "SectionTitle"))
         head.addStretch(1)
@@ -488,8 +400,12 @@ class BoosterWindow(QMainWindow):
         p2, rules = panel()
         top = row(label("Item usage", "SectionTitle"))
         top.addStretch(1)
-        top.addWidget(label("Interval = repeat every   ·   Delay = first use", "Muted"))
+        top.addWidget(btn("Enable all assigned", lambda: self._toggle_all_slots(True), "SoftPurple"))
+        top.addWidget(btn("Disable all", lambda: self._toggle_all_slots(False)))
         rules.addLayout(top)
+        hint = label("Every = seconds between key presses.  Delay = seconds until the first key press after starting.", "Muted")
+        hint.setWordWrap(True)
+        rules.addWidget(hint)
         for slot in self.store.profile["slots"]:
             k = slot["key"]
             box = QFrame()
@@ -543,6 +459,62 @@ class BoosterWindow(QMainWindow):
     def _edit_slot(self, slot, name, value):
         slot[name] = value
         self._changed()
+
+    def _toggle_overlay_slot(self, key: int):
+        slot = next((s for s in self.store.profile["slots"] if s["key"] == key), None)
+        if slot is None:
+            return
+        if slot["item"].strip().lower() in ("", "empty"):
+            self.show_page("Hotbar")
+            QMessageBox.information(self, "Set up this slot first",
+                                    f"Choose an item for slot {key}, then click its red AUTO button again.")
+            return
+        slot["enabled"] = not slot["enabled"]
+        self._changed()
+        self._log(f"Slot {key} AUTO {'ON' if slot['enabled'] else 'OFF'} ({slot['item']})")
+
+    def _set_all_overlay_slots(self, visible: bool):
+        for slot in self.store.profile["slots"]:
+            slot["overlay_visible"] = visible
+        self._changed()
+        self.show_page("Hotbar")
+        self._log("Showing all hotbar overlay buttons" if visible else "Hiding all hotbar overlay buttons")
+
+    def _toggle_all_slots(self, enabled: bool):
+        for slot in self.store.profile["slots"]:
+            slot["enabled"] = enabled and slot["item"].strip().lower() not in ("", "empty")
+        self._changed()
+        self.show_page("Hotbar")
+        self._log("Enabled all configured slots" if enabled else "Disabled all slots")
+
+    def _reset_overlay_position(self):
+        self.store.settings["overlay_x"] = -1
+        self.store.settings["overlay_y"] = -1
+        self._changed()
+        self._log("Overlay position reset to screen anchor")
+
+    def _reset_alarm_overlay_position(self):
+        self.store.settings["alarm_overlay_x"] = -1
+        self.store.settings["alarm_overlay_y"] = -1
+        self._changed()
+        self._log("Alarm overlay position reset (hotbar position unchanged)")
+
+    def _move_overlay_to_screen_bottom(self):
+        """Allow positioning all the way to the physical screen edge."""
+        self._render_overlays()
+        screen = (QApplication.screenAt(self.overlay.frameGeometry().center())
+                  or self.overlay.screen() or QApplication.primaryScreen())
+        if screen is None:
+            return
+        r = screen.geometry()
+        x, y = clamp_overlay_position(
+            self.overlay.x(), bottom_edge_y(r.top(), r.height(), self.overlay.height()),
+            r.left(), r.top(), r.width(), r.height(),
+            self.overlay.width(), self.overlay.height())
+        self.store.settings["overlay_x"] = x
+        self.store.settings["overlay_y"] = y
+        self._changed()
+        self._log("Overlay moved to the bottom edge of the screen")
 
     def _refresh_tiles(self):
         for slot in self.store.profile["slots"]:
@@ -604,19 +576,20 @@ class BoosterWindow(QMainWindow):
         return scroll
 
     def _page_alarms(self):
-        scroll, v = self._page("Alarms & overlay", "Set reset hotkeys and choose a repeating sound or offline Windows voice for each countdown.")
+        scroll, v = self._page("Alarms & overlay", "Set reset hotkeys, sound or voice alerts, and a separately movable alarm display.")
         toolbar, tools = panel()
         top = row(label("Your alarms", "SectionTitle"))
         top.addStretch(1)
         top.addWidget(btn("Start all", self.start_all_alarms, "SoftPurple"))
         top.addWidget(btn("+ New alarm", self.add_alarm, "Primary"))
         tools.addLayout(top)
-        overlay_chk = checkbox("Show always-on-top overlay", self.store.settings["overlay_visible"],
-                               lambda value: self._set_setting("overlay_visible", value))
+        overlay_chk = checkbox("Show alarms in a separate movable overlay", self.store.settings["overlay_alarms_visible"],
+                               lambda value: self._set_setting("overlay_alarms_visible", value))
         tools.addWidget(overlay_chk)
+        tools.addWidget(btn("Reset alarm overlay position", self._reset_alarm_overlay_position, "SoftPurple"))
         tools.addWidget(label("A single key works (for example G or 8), or use a combination. Press it to silence and restart the countdown.", "Muted"))
         tools.addWidget(label("Warning: a single-key global shortcut may prevent Roblox or other apps from receiving that key while Bss Booster is open.", "Muted"))
-        tools.addWidget(label("Voice uses Windows' offline text-to-speech; Sound loops until reset. Use windowed/borderless for the overlay.", "Muted"))
+        tools.addWidget(label("A hidden alarm still counts down AND plays Sound/Voice. You control display and sound separately. Use windowed/borderless for the overlay.", "Muted"))
         v.addWidget(toolbar)
         if not self.store.profile["alarms"]:
             empty, layout = panel()
@@ -670,7 +643,7 @@ class BoosterWindow(QMainWindow):
             duration_line.addStretch(1)
             duration_line.addWidget(checkbox("Repeat", alarm["repeat"],
                                              lambda value, a=alarm: self._edit_alarm(a, "repeat", value)))
-            duration_line.addWidget(checkbox("Overlay", alarm["overlay"],
+            duration_line.addWidget(checkbox("Show on screen", alarm["overlay"],
                                              lambda value, a=alarm: self._edit_alarm(a, "overlay", value)))
             contents.addLayout(duration_line)
             alert_line = QHBoxLayout()
@@ -746,28 +719,28 @@ class BoosterWindow(QMainWindow):
             QMessageBox.information(self, "No alarm audio", "Select Sound or Voice first.")
             return
         self.notifier.trigger(alarm)
-        self.overlay.render()
+        self._render_overlays()
         self._log(f"Testing {alarm['alert_mode'].lower()} alert: {alarm['name']}")
 
     def _alarm_silence(self, alarm):
         self.notifier.acknowledge(alarm["id"])
-        self.overlay.render()
+        self._render_overlays()
 
     def _alarm_start(self, alarm):
         self.notifier.acknowledge(alarm["id"])
         self.clock.start(alarm)
-        self.overlay.render()
+        self._render_overlays()
 
     def _alarm_pause(self, alarm):
         self.notifier.acknowledge(alarm["id"])
         self.clock.pause(alarm["id"])
-        self.overlay.render()
+        self._render_overlays()
 
     def _alarm_reset(self, alarm):
         self.notifier.acknowledge(alarm["id"])
         self.clock.reset(alarm)
         self.clock.start(alarm)
-        self.overlay.render()
+        self._render_overlays()
         self._log(f"Restarted alarm: {alarm['name']}")
 
     def _alarm_delete(self, alarm):
@@ -795,7 +768,7 @@ class BoosterWindow(QMainWindow):
     def start_all_alarms(self):
         for a in self.store.profile["alarms"]:
             self.clock.start(a)
-        self.overlay.render()
+        self._render_overlays()
         self._log("Started all enabled alarms")
 
     def _page_profiles(self):
@@ -847,8 +820,8 @@ class BoosterWindow(QMainWindow):
         self.notifier.sync([])
         self.clock = AlarmClock()
         self.clock.configure(self.store.profile["alarms"])
-        self.overlay.clock = self.clock
-        self.overlay.order = ()
+        self.alarm_overlay.clock = self.clock
+        self.alarm_overlay._alarm_order = ()
         self._fill_profile_selector()
         self._changed()
         self._sync_hotkeys()
@@ -941,7 +914,7 @@ class BoosterWindow(QMainWindow):
             self.log_text.clear()
 
     def _page_settings(self):
-        scroll, v = self._page("Settings", "Customize how Bss Booster interacts with Roblox and how your alarm overlay appears.")
+        scroll, v = self._page("Settings", "Choose how macros run, which overlay sections appear, and exactly how the red AUTO buttons line up.")
         p, layout = panel()
         layout.addWidget(label("Macro safety & controls", "SectionTitle"))
         layout.addWidget(checkbox("Only send keys while Roblox is the active window (recommended)",
@@ -961,8 +934,31 @@ class BoosterWindow(QMainWindow):
         v.addWidget(p)
         p, layout = panel()
         layout.addWidget(label("In-game hotbar & alarm overlay", "SectionTitle"))
-        layout.addWidget(checkbox("Show the floating overlay", self.store.settings["overlay_visible"],
-                                   lambda val: self._set_setting("overlay_visible", val)))
+        layout.addWidget(checkbox("Show red hotbar AUTO buttons", self.store.settings["overlay_hotbar_visible"],
+                                   lambda val: self._set_setting("overlay_hotbar_visible", val)))
+        layout.addWidget(checkbox("Show alarm timers (even without hotbar buttons)", self.store.settings["overlay_alarms_visible"],
+                                   lambda val: self._set_setting("overlay_alarms_visible", val)))
+        layout.addWidget(checkbox("Display hotbar countdowns inside AUTO buttons", self.store.settings["overlay_countdowns"],
+                                   lambda val: self._set_setting("overlay_countdowns", val)))
+        layout.addWidget(checkbox("Click-through mode (both overlays cannot be clicked or dragged)", self.store.settings["overlay_clickthrough"],
+                                   lambda val: self._set_setting("overlay_clickthrough", val)))
+        layout.addWidget(label("RIGHT-DRAG a red button to move the hotbar. RIGHT-DRAG an alarm chip to move alarms independently. Both positions save automatically.", "Muted"))
+        layout.addWidget(btn("Reset overlay position", self._reset_overlay_position, "SoftPurple"))
+        layout.addWidget(btn("Move hotbar to screen bottom", self._move_overlay_to_screen_bottom, "SoftPurple"))
+        layout.addWidget(btn("Reset alarm overlay position (independent)", self._reset_alarm_overlay_position, "SoftPurple"))
+        for setting_key, text, lower, upper in (
+                ("overlay_scale", "Button size", 60, 150),
+                ("overlay_spacing", "Distance between buttons", 0, 80)):
+            settings_row = row(label(text))
+            settings_row.addStretch(1)
+            selector = QSpinBox()
+            selector.setRange(lower, upper)
+            selector.setValue(self.store.settings[setting_key])
+            selector.setSuffix("%" if setting_key == "overlay_scale" else " px")
+            selector.setFixedWidth(95)
+            selector.valueChanged.connect(lambda value, key=setting_key: self._set_setting(key, value))
+            settings_row.addWidget(selector)
+            layout.addLayout(settings_row)
         corner = row(label("Screen position"))
         corner.addStretch(1)
         cb = QComboBox()
@@ -971,20 +967,10 @@ class BoosterWindow(QMainWindow):
         cb.currentTextChanged.connect(lambda val: self._set_setting("overlay_corner", val))
         corner.addWidget(cb)
         layout.addLayout(corner)
-        opacity = row(label("Overlay opacity"))
-        opacity.addStretch(1)
-        slider = QSlider(Qt.Orientation.Horizontal)
-        slider.setMinimum(40); slider.setMaximum(100)
-        slider.setValue(self.store.settings["overlay_opacity"])
-        slider.setMinimumWidth(200)
-        opacity.addWidget(slider)
-        output = label(str(slider.value()) + "%", "Muted")
-        opacity.addWidget(output)
-        slider.valueChanged.connect(lambda x: (output.setText(f"{x}%"), self._set_setting("overlay_opacity", x)))
-        layout.addLayout(opacity)
         v.addWidget(p)
         p, layout = panel()
         layout.addWidget(label("Appearance", "SectionTitle"))
+        layout.addWidget(label("OFF buttons use #FF0000 at 20% opacity; ON buttons switch to a small green pill. Gotham Regular is used when installed (Segoe UI fallback).", "Muted"))
         rr = row(label("App theme"))
         rr.addStretch(1)
         theme = QComboBox()
@@ -1002,6 +988,10 @@ class BoosterWindow(QMainWindow):
 
     def _set_setting(self, key, value):
         self.store.settings[key] = value
+        if key == "overlay_corner":
+            # Choosing a new anchor overrides a prior manual right-drag position.
+            self.store.settings["overlay_x"] = -1
+            self.store.settings["overlay_y"] = -1
         self._changed()
         if key == "theme":
             self.setStyleSheet(stylesheet(value))
@@ -1075,7 +1065,7 @@ class BoosterWindow(QMainWindow):
         if self.current_page == "Timers":
             for key, widget in self.timer_count_labels.items():
                 widget.setText(str(self.slot_counts[key]) + " uses")
-        self.overlay.render()
+        self._render_overlays()
 
     def _update_controls(self, focused: bool | None = None):
         if not hasattr(self, "start_btn"):
@@ -1112,5 +1102,6 @@ class BoosterWindow(QMainWindow):
         self.hotkeys.unregister()
         QApplication.instance().removeNativeEventFilter(self.hotkeys)
         self.overlay.close()
+        self.alarm_overlay.close()
         self.store.save()
         super().closeEvent(event)
