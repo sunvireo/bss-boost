@@ -1,0 +1,62 @@
+name: Build Bss Booster Windows EXE and Installer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "bss_booster/**"
+      - "assets/**"
+      - "main.py"
+      - "requirements.txt"
+      - "BssBooster.iss"
+      - ".github/workflows/windows-release.yml"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download source
+        uses: actions/checkout@v4
+      - name: Install Python on build runner (not on your PC)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6,<7" pytest
+      - name: Run tests
+        run: python -m pytest -q tests
+      - name: Compile portable Windows BssBooster.exe
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name BssBooster --icon assets/bss_booster_icon.ico --add-data "assets/bss_booster_icon.png;assets" --add-data "assets/booster_alarm.wav;assets" main.py
+          if ($LASTEXITCODE -ne 0) { throw "PyInstaller build failed" }
+      - name: Install Inno Setup on runner
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed" }
+          }
+      - name: Compile BssBoosterSetup.exe
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found" }
+          & $iscc "BssBooster.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed" }
+      - name: Upload finished EXEs
+        uses: actions/upload-artifact@v4
+        with:
+          name: BssBooster-Windows-EXE-and-Installer
+          path: |
+            dist/BssBooster.exe
+            dist/installer/BssBoosterSetup.exe
+          if-no-files-found: error
+          retention-days: 30
