@@ -1,7 +1,7 @@
 ; Bss Booster Windows installer, built with Inno Setup 6.
 ; Compile using build_installer_windows.bat after packaging dist\BssBooster.exe.
 #define MyAppName "Bss Booster"
-#define MyAppVersion "1.4.0"
+#define MyAppVersion "1.4.3"
 #define MyAppPublisher "Bss Booster"
 #define MyAppExeName "BssBooster.exe"
 
@@ -24,7 +24,7 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
-VersionInfoVersion=1.4.0.0
+VersionInfoVersion=1.4.3.0
 VersionInfoDescription=Bss Booster Setup
 
 [Languages]

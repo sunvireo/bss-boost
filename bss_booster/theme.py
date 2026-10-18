@@ -13,9 +13,8 @@ def stylesheet(mode: str = "Light") -> str:
     return f'''
 QWidget {{ color: {ink}; font-family: "Segoe UI", Arial; font-size: 12px; }}
 QWidget#Root {{ background: {bg}; }}
-QWidget#TopBar, QWidget#LeftRail, QWidget#BottomBar {{ background: {paper}; }}
+QWidget#TopBar, QWidget#BottomBar {{ background: {paper}; }}
 QWidget#TopBar {{ border-bottom: 1px solid {border}; }}
-QWidget#LeftRail {{ border-right: 1px solid {border}; }}
 QWidget#BottomBar {{ border-top: 1px solid {border}; }}
 QWidget#PageBody, QScrollArea#PageScroll, QScrollArea#PageScroll > QWidget > QWidget {{ background: {bg}; }}
 QFrame#Panel, QFrame#AlarmCard, QFrame#SlotRow {{ background: {paper}; border: 1px solid {border}; border-radius: 13px; }}
@@ -41,9 +40,6 @@ QPushButton#Danger {{ color: {'#ffadb0' if dark else '#b83448'}; }}
 QPushButton#NavTab {{ border: none; border-radius: 0; background: transparent; padding: 13px 15px; font-weight: 600; }}
 QPushButton#NavTab:hover {{ background: {soft}; }}
 QPushButton#NavTab[active="true"] {{ background: {'#42314d' if dark else '#f0e8f7'}; color: {'#d3b3ff' if dark else purple}; border-bottom: 3px solid {purple}; }}
-QPushButton#RailButton {{ border: none; border-radius: 13px; background: transparent; font-size: 19px; padding: 6px; }}
-QPushButton#RailButton:hover {{ background: {soft}; }}
-QPushButton#RailButton[active="true"] {{ background: {'#412956' if dark else '#f0e7fc'}; color: {'#dbc5ff' if dark else purple}; }}
 QPushButton#AddButton {{ border: none; border-radius: 20px; background: {purple}; color: white; font-size: 23px; font-weight: 400; padding: 0; }}
 QPushButton#AddButton:hover {{ background: {purple_hover}; }}
 QLineEdit, QKeySequenceEdit, QComboBox, QSpinBox, QDoubleSpinBox {{ background: {paper}; border: 1px solid {border}; border-radius: 8px; padding: 8px; min-height: 20px; selection-background-color: {purple}; }}

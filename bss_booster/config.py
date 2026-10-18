@@ -41,7 +41,7 @@ def default_data() -> dict:
                          "overlay_countdowns": False, "overlay_spacing": 22,
                          "overlay_scale": 100, "overlay_x": -1, "overlay_y": -1,
                          "alarm_overlay_x": -1, "alarm_overlay_y": -1,
-                         "overlay_clickthrough": False}}
+                         }}
 
 
 def clamp_number(value, default, low, high):
@@ -133,8 +133,7 @@ def validated_data(raw) -> dict:
     settings = raw.get("settings", {})
     if isinstance(settings, dict):
         for key in ("focus_only", "overlay_visible", "hotkeys", "animations", "start_alarms_with_macro",
-                    "overlay_hotbar_visible", "overlay_alarms_visible", "overlay_countdowns",
-                    "overlay_clickthrough"):
+                    "overlay_hotbar_visible", "overlay_alarms_visible", "overlay_countdowns"):
             if isinstance(settings.get(key), bool):
                 base["settings"][key] = settings[key]
         for key, choices in (("overlay_corner", ["Top left", "Top center", "Top right", "Bottom left", "Bottom center", "Bottom right"]),

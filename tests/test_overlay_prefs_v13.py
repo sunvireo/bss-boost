@@ -72,13 +72,35 @@ def test_overlay_options_survive_restart(tmp_path):
     path = tmp_path / 'prefs.json'
     store = Store(path)
     store.settings.update(overlay_hotbar_visible=False, overlay_alarms_visible=True,
-                          overlay_clickthrough=True, overlay_countdowns=True,
+                          overlay_countdowns=True,
                           overlay_scale=90, overlay_spacing=23, overlay_x=200, overlay_y=820)
     store.profile['slots'][1].update(item='Gumdrops', enabled=True, interval=2.0)
     store.save()
     new = Store(path)
-    for key in ('overlay_hotbar_visible', 'overlay_alarms_visible', 'overlay_clickthrough',
+    for key in ('overlay_hotbar_visible', 'overlay_alarms_visible',
                 'overlay_countdowns', 'overlay_scale', 'overlay_spacing', 'overlay_x', 'overlay_y'):
         assert new.settings[key] == store.settings[key]
     assert new.profile['slots'][1]['item'] == 'Gumdrops'
     assert new.profile['slots'][1]['interval'] == 2.0
+
+
+def test_old_clickthrough_setting_is_ignored_and_removed_on_save(tmp_path):
+    """People locked out of dragging in v1.4 regain control without resetting presets."""
+    path = tmp_path / 'old_settings.json'
+    legacy = default_data()
+    legacy['settings']['overlay_clickthrough'] = True
+    legacy['settings']['overlay_x'] = 377
+    legacy['settings']['overlay_y'] = 812
+    legacy['profiles']['Default']['slots'][1].update(
+        item='Gumdrops', interval=2.0, enabled=True,
+    )
+    path.write_text(json.dumps(legacy), encoding='utf-8')
+
+    store = Store(path)
+    assert 'overlay_clickthrough' not in store.settings
+    assert (store.settings['overlay_x'], store.settings['overlay_y']) == (377, 812)
+    assert store.profile['slots'][1]['item'] == 'Gumdrops'
+    assert store.profile['slots'][1]['enabled']
+    store.save()
+    saved = json.loads(path.read_text(encoding='utf-8'))
+    assert 'overlay_clickthrough' not in saved['settings']

@@ -5,7 +5,8 @@ from pathlib import Path
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 import pytest
 pytest.importorskip('PySide6')
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtCore import Qt
 from bss_booster.config import Store, make_alarm
 from bss_booster.ui import BoosterWindow
 
@@ -16,6 +17,18 @@ def test_gui_and_overlay_can_render(tmp_path):
     store = Store(tmp_path / 'settings.json')
     win = BoosterWindow(store, project / 'assets' / 'bss_booster_icon.png')
     try:
+        # v1.4.3: navigation comes from the top tabs only, with a real bell
+        # icon on Alarms; the removed left rail must not be recreated.
+        assert win.centralWidget().findChild(QWidget, 'LeftRail') is None
+        assert not win.top_buttons['Alarms'].icon().isNull()
+        assert win.top_buttons['Alarms'].text() == 'Alarms'
+        for page in ('Hotbar', 'Timers', 'Alarms', 'Profiles', 'Status', 'Settings'):
+            win.show_page(page)
+            assert win.current_page == page
+        # Transparent backgrounds must NOT disable mouse interaction.
+        for floating in (win.overlay, win.alarm_overlay):
+            assert not floating.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            assert not (floating.windowFlags() & Qt.WindowType.WindowTransparentForInput)
         slot = store.profile['slots'][1]
         slot.update(item='Gumdrops', enabled=False, interval=2.0)
         win._changed()

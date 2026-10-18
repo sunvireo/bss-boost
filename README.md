@@ -1,4 +1,4 @@
-# Bss Booster v1.4.0 — Windows boosting macro
+# Bss Booster v1.4.3 — Windows boosting macro
 
 A customizable Bee Swarm Simulator boosting helper with a **light, Revolution-Macro-inspired desktop UI** and **transparent red AUTO buttons**, designed to sit beneath the real Roblox hotbar. Built with Python and PySide6; no network access is needed to run the finished app. Unaffiliated with Roblox or Bee Swarm Simulator.
 
@@ -15,7 +15,7 @@ A customizable Bee Swarm Simulator boosting helper with a **light, Revolution-Ma
 - Optional countdown on each red AUTO button. Disabled/unconfigured slots display `AUTO: OFF`.
 - **Right-drag any red button** to reposition the whole overlay, including to the *actual bottom of your screen*. Unlike previous versions, the position is not clamped above the Windows taskbar. New position saves immediately and loads next time. You can also use **Move to screen bottom** on the Hotbar or Settings page; size (60–150%) and spacing (0–80 px) remain configurable.
 - **Show red AUTO buttons** and **Show alarm timers** have separate switches. Show both, either one, or neither. The Hotbar page also has **Show all 7 / Hide all 7** quick buttons and per-slot visibility checkboxes. These visibility options are saved with each profile; macro 'Use' and 'Show' are independent. Hiding a display NEVER stops the associated macro or running alarms.
-- Optional **click-through mode** in Settings lets game clicks pass through the buttons, but disables mouse toggling until you switch it off.
+- The overlay buttons and alarm chips stay **clickable and independently draggable**. Click-through mode has been removed, including from saved settings. Transparent gaps between buttons still allow clicks to the game.
 - **Alarms are in their own transparent always-on-top window**, independent of the hotbar window. **Right-drag an alarm chip to move all alarm timers** without moving the red pills. **Right-drag a red pill** to move only the hotbar overlay. Each window remembers its own position on restart; use **Reset alarm overlay position** in Alarms or Settings to re-center alarms. Each alarm also has its own individual Overlay checkbox.
 - The overlay is an independent always-on-top utility window. Some exclusive-fullscreen games cover it; use borderless/windowed Roblox. The Windows taskbar itself may cover a button dragged behind the taskbar when the taskbar is visible.
 
@@ -47,7 +47,7 @@ A customizable Bee Swarm Simulator boosting helper with a **light, Revolution-Ma
 - This does not copy in-game icons or inspect the Roblox inventory. The red buttons are aligned visually beneath it using position and spacing controls.
 - Simulated keypresses use the Windows `SendInput` API. Some games may ignore synthetic input; Roblox behaviour isn't guaranteed. Bss Booster has no memory-reading, anti-cheat bypass or game injection features.
 - Macro triggers at independent user-defined intervals. If Roblox loses focus, input stops when foreground protection is on; missed presses don't burst on refocus.
-- If you can't click overlay AUTO buttons, disable **Click-through mode** in Settings. If they aren't visible, configure at least one item, then enable the overlay. Moving them is done by **right-dragging** a red button.
+- If an overlay is missing, configure at least one hotbar item or alarm and enable its visibility setting. Move it by **right-dragging** a visible red button or alarm chip. Upgrading from an older version removes the obsolete click-through setting without clearing profiles.
 - Gotham Regular is commercial typography: Bss Booster uses it when it is already installed, but the font is **not redistributed** with the project.
 - Windows TTS is a system speech synthesizer, not a remote AI service. Voice playback requires Windows speech support; if it fails, Bss Booster falls back to the alarm sound.
 - Windows SmartScreen may warn about unsigned EXEs built through your own GitHub repository. Only run files you trust.
@@ -63,3 +63,10 @@ A customizable Bee Swarm Simulator boosting helper with a **light, Revolution-Ma
 - `bss_booster/theme.py` — main UI light/dark palettes
 - `.github/workflows/windows-release.yml` — Windows build and tests
 - `tests/` — configuration/scheduler tests and Windows GUI smoke test
+
+## v1.4.3 interface change
+
+- Removed the left sidebar. All app pages are reached through the **top navigation tabs**.
+- The Alarms tab now has a clear **bell icon**.
+- **+ New alarm** remains available directly on the Alarms page.
+- Hotbar macros, timers, movable overlays, and saved settings are unchanged.

@@ -7,8 +7,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QEasingCurve, QPropertyAnimation
-from PySide6.QtGui import QFont, QIcon, QKeySequence, QShortcut
+from PySide6.QtCore import Qt, QTimer, QEasingCurve, QPropertyAnimation, QSize
+from PySide6.QtGui import QFont, QIcon, QKeySequence, QShortcut, QPixmap, QPainter, QPainterPath, QPen, QColor
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QFrame,
     QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QKeySequenceEdit, QLabel, QLineEdit,
@@ -26,7 +26,33 @@ from .overlay_geometry import bottom_edge_y, clamp_overlay_position
 from .theme import stylesheet
 
 PAGES = ["Hotbar", "Timers", "Alarms", "Profiles", "Status", "Settings"]
-SYMBOLS = {"Hotbar": "◈", "Timers": "◷", "Alarms": "♧", "Profiles": "▤", "Status": "⌁", "Settings": "⚙"}
+SYMBOLS = {"Hotbar": "◈", "Timers": "◷", "Profiles": "▤", "Status": "⌁", "Settings": "⚙"}
+
+
+def bell_icon() -> QIcon:
+    """Small, crisp bell for the Alarms top tab (no font/emoji required)."""
+    pixmap = QPixmap(24, 24)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    try:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(QPen(QColor("#7427b5"), 1.8, Qt.PenStyle.SolidLine,
+                            Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        bell = QPainterPath()
+        bell.moveTo(4.8, 17.8)
+        bell.lineTo(6.7, 15.6)
+        bell.lineTo(6.7, 10.0)
+        bell.cubicTo(6.7, 6.8, 8.9, 4.7, 12.0, 4.7)
+        bell.cubicTo(15.1, 4.7, 17.3, 6.8, 17.3, 10.0)
+        bell.lineTo(17.3, 15.6)
+        bell.lineTo(19.2, 17.8)
+        bell.closeSubpath()
+        painter.drawPath(bell)
+        painter.drawArc(10, 18, 4, 3, 180 * 16, 180 * 16)
+    finally:
+        painter.end()
+    return QIcon(pixmap)
 
 
 def row(*widgets, spacing=10, margins=(0, 0, 0, 0)) -> QHBoxLayout:
@@ -124,7 +150,7 @@ class BoosterWindow(QMainWindow):
         self.setMinimumSize(950, 635)
         self.resize(1150, 755)
         self.setStyleSheet(stylesheet(store.settings["theme"]))
-        self._build_shell(icon_path)
+        self._build_shell()
         self._render_overlays()
         self._save_later = QTimer(self)
         self._save_later.setSingleShot(True)
@@ -145,7 +171,7 @@ class BoosterWindow(QMainWindow):
         self.show_page("Hotbar")
         self._log("Ready. Set up an item, click its red AUTO button or enable it here, then press F1.")
 
-    def _build_shell(self, icon_path):
+    def _build_shell(self):
         root = QWidget()
         root.setObjectName("Root")
         self.setCentralWidget(root)
@@ -160,7 +186,12 @@ class BoosterWindow(QMainWindow):
         nav.setContentsMargins(8, 0, 10, 0)
         self.top_buttons = {}
         for page in PAGES:
-            b = btn(SYMBOLS[page] + "  " + page, lambda _=False, p=page: self.show_page(p), "NavTab")
+            # Alarms has a real drawn bell icon, not the previous clover symbol.
+            tab_text = page if page == "Alarms" else SYMBOLS[page] + "  " + page
+            b = btn(tab_text, lambda _=False, p=page: self.show_page(p), "NavTab")
+            if page == "Alarms":
+                b.setIcon(bell_icon())
+                b.setIconSize(QSize(18, 18))
             nav.addWidget(b)
             self.top_buttons[page] = b
         nav.addStretch(1)
@@ -169,41 +200,12 @@ class BoosterWindow(QMainWindow):
         nav.addWidget(self.top_search)
         outer.addWidget(top)
 
-        middle = QWidget()
-        middle_row = QHBoxLayout(middle)
-        middle_row.setSpacing(0)
-        middle_row.setContentsMargins(0, 0, 0, 0)
-        rail = QWidget()
-        rail.setObjectName("LeftRail")
-        rail.setFixedWidth(61)
-        rail_layout = QVBoxLayout(rail)
-        rail_layout.setContentsMargins(8, 9, 8, 10)
-        rail_layout.setSpacing(9)
-        self.rail_buttons = {}
-        if icon_path.exists():
-            logo = QLabel()
-            pixmap = QIcon(str(icon_path)).pixmap(34, 34)
-            logo.setPixmap(pixmap)
-            logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        else:
-            logo = label("✿")
-        logo.setFixedHeight(45)
-        rail_layout.addWidget(logo)
-        for page in ["Hotbar", "Timers", "Alarms", "Profiles", "Settings"]:
-            b = btn(SYMBOLS[page], lambda _=False, p=page: self.show_page(p), "RailButton", page)
-            b.setFixedHeight(37)
-            rail_layout.addWidget(b)
-            self.rail_buttons[page] = b
-        rail_layout.addStretch(1)
-        add = btn("+", self.add_alarm, "AddButton", "Create an alarm")
-        add.setFixedSize(41, 41)
-        rail_layout.addWidget(add)
-        middle_row.addWidget(rail)
+        # Single full-width content pane. The redundant left navigation rail
+        # was removed; every page is reachable from the top tabs.
         self.stack = QStackedWidget()
         for _ in PAGES:
             self.stack.addWidget(QWidget())
-        middle_row.addWidget(self.stack, 1)
-        outer.addWidget(middle, 1)
+        outer.addWidget(self.stack, 1)
 
         footer = QWidget()
         footer.setObjectName("BottomBar")
@@ -297,8 +299,6 @@ class BoosterWindow(QMainWindow):
         self.stack.insertWidget(index, screen)
         self.stack.setCurrentIndex(index)
         for name, widget in self.top_buttons.items():
-            self._property(widget, "active", name == page)
-        for name, widget in self.rail_buttons.items():
             self._property(widget, "active", name == page)
         if self.store.settings["animations"]:
             effect = QGraphicsOpacityEffect(screen)
@@ -940,8 +940,6 @@ class BoosterWindow(QMainWindow):
                                    lambda val: self._set_setting("overlay_alarms_visible", val)))
         layout.addWidget(checkbox("Display hotbar countdowns inside AUTO buttons", self.store.settings["overlay_countdowns"],
                                    lambda val: self._set_setting("overlay_countdowns", val)))
-        layout.addWidget(checkbox("Click-through mode (both overlays cannot be clicked or dragged)", self.store.settings["overlay_clickthrough"],
-                                   lambda val: self._set_setting("overlay_clickthrough", val)))
         layout.addWidget(label("RIGHT-DRAG a red button to move the hotbar. RIGHT-DRAG an alarm chip to move alarms independently. Both positions save automatically.", "Muted"))
         layout.addWidget(btn("Reset overlay position", self._reset_overlay_position, "SoftPurple"))
         layout.addWidget(btn("Move hotbar to screen bottom", self._move_overlay_to_screen_bottom, "SoftPurple"))

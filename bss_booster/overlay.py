@@ -26,14 +26,6 @@ def _full_display(window):
     return screen.geometry() if screen is not None else None
 
 
-def _apply_clickthrough(window, enabled):
-    enabled = bool(enabled)
-    if window.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) != enabled:
-        window.setWindowFlag(Qt.WindowType.WindowTransparentForInput, enabled)
-        window.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, enabled)
-        window.show()
-
-
 class _DraggableOverlayItem:
     """Right-drag any visible pill/chip to move its OWN overlay window."""
     def mousePressEvent(self, event):
@@ -80,6 +72,10 @@ class HotbarOverlay(QWidget):
         super().__init__(None, OVERLAY_FLAGS)
         self.setObjectName("BssCleanOverlay")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        # Visual transparency only: never make this window ignore mouse input.
+        # Earlier versions used WindowTransparentForInput and could not be dragged
+        # reliably again after disabling it; the feature has been removed.
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.store, self.scheduler = store, scheduler
         self.buttons: dict[int, AutoPill] = {}
@@ -179,7 +175,6 @@ class HotbarOverlay(QWidget):
             button = self.buttons[key]
             region = region.united(QRegion(QRect(button.mapTo(self, QPoint(0, 0)), button.size())))
         self.setMask(region)
-        _apply_clickthrough(self, prefs["overlay_clickthrough"])
 
         screen = _full_display(self)
         if screen is None:
@@ -214,6 +209,10 @@ class AlarmOverlay(QWidget):
         super().__init__(None, OVERLAY_FLAGS)
         self.setObjectName("BssAlarmOverlay")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        # Visual transparency only: never make this window ignore mouse input.
+        # Earlier versions used WindowTransparentForInput and could not be dragged
+        # reliably again after disabling it; the feature has been removed.
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.store, self.clock, self.notifier = store, clock, notifier
         self._dragging = False
@@ -268,7 +267,6 @@ class AlarmOverlay(QWidget):
         for chip in self._alarm_widgets.values():
             region = region.united(QRegion(QRect(chip.mapTo(self, QPoint(0, 0)), chip.size())))
         self.setMask(region)
-        _apply_clickthrough(self, prefs["overlay_clickthrough"])
         screen = _full_display(self)
         if screen is None:
             return

@@ -38,4 +38,12 @@ To move red buttons, right-drag one red AUTO pill.
 To move alarm timers separately, right-drag an alarm countdown chip.
 To center alarm timers again, click "Reset alarm overlay position" in ALARMS.
 Both overlay locations and visibility choices save when you close the app.
-If Click-through mode is enabled, disable it before dragging.
+Click-through mode is no longer present: buttons and alarms always support mouse dragging.
+
+V1.4.2: CLICK-THROUGH REMOVED
+You can always left-click an AUTO button or right-drag it to move the row.
+Right-drag an alarm chip to move the alarm overlay independently.
+Old saved click-through settings are automatically ignored; profiles are kept.
+
+V1.4.3 NAVIGATION
+Use the tabs along the TOP of the app (Hotbar, Timers, bell Alarms, Profiles, Status, Settings). The left sidebar has been removed. Add alarms from the Alarms page.
